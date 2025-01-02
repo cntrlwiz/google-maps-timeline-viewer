@@ -12,8 +12,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Maps Timeline</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=marker,places"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script>
+		(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+		key: "YOUR_API_KEY",
+		v: "weekly",
+		// Use the 'v' parameter to indicate the version to use (weekly, beta, alpha, etc.).
+		// Add other bootstrap parameters as needed, using camel case.
+		libraries: "marker,places"
+		});
+	</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 
 
     <style>
@@ -68,8 +76,7 @@
             flex-grow: 1;
         }
         
-        #controls-container,
-        #go-container {
+        #controls-container {
 		  padding: 10px;
 		  border-bottom: 1px solid #e0e0e0;
 		  display: flex;
@@ -94,12 +101,6 @@
 		}
 		.btn-icon {
 		  font-size: 12px;
-		}
-		#goBtn {
-			background: #91a5c4;
-		}
-		#goBtn:hover {
-		  background: #7b91b5;
 		}
 
         
@@ -234,6 +235,7 @@
             <div id="controls-container">
                 <button id="folderPicker" class="control-btn">Choose Folder</button>
                 <button id="layerBtn" class="control-btn">Layers</button>
+                <button id="goBtn" class="control-btn">GO</button>
             </div>
             <div id="layerOptions" style="display: none;">
                 <h4>View Options</h4>
@@ -252,9 +254,6 @@
                 <span>to</span>
                 <input type="date" id="endDatePicker">
                 <span id="nextDayBtn">&gt;</span>
-            </div>
-            <div id="go-container">
-				<button id="goBtn" class="control-btn">GO</button>
             </div>
             <div id="loading-overlay">
                 <div id="loading-spinner"></div>
@@ -277,16 +276,19 @@
         let globalIndex = 0; // Global counter for unique data-index
 
 
-        function initMap() {
-            map = new google.maps.Map(document.getElementById('map'), {
-                center: {
-                    lat: 25.034170396411103,
-                    lng: 121.56456035320929
-                },
-                zoom: 12,
-                mapId: "TIMELINE_MAP"
-            });
-        }
+		// initMap is now async
+		async function initMap() {
+			// Request libraries when needed, not in the script tag.
+			const { Map } = await google.maps.importLibrary("maps");
+			// Short namespaces can be used.
+			map = new Map(document.getElementById("map"), {
+				center: { lat: 25.034170396411103, lng: 121.56456035320929 },
+				zoom: 12,
+				mapId: "TIMELINE_MAP"
+			});
+			const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+			const { PinElement } = await google.maps.importLibrary("marker");
+		}
 
 		function createTimelineItem(item, index, currentDate) {
 			console.log('Creating timeline item:', item, 'with index:', index, 'and date:', currentDate);
@@ -957,7 +959,12 @@
             document.getElementById('prevDayBtn').addEventListener('click', () => {
                 const startDate = new Date(startDatePicker.value);
                 const endDate = new Date(endDatePicker.value);
-                startDate.setUTCDate(startDate.getUTCDate() - 1);
+                if (startDate > endDate) {
+                    alert('Start date must be before end date.');
+					startDatePicker.value = moment.utc(endDate).format('YYYY-MM-DD');
+                    return;
+                }
+				startDate.setUTCDate(startDate.getUTCDate() - 1);
                 endDate.setUTCDate(endDate.getUTCDate() - 1);
                 startDatePicker.value = moment.utc(startDate).format('YYYY-MM-DD');
                 endDatePicker.value = moment.utc(endDate).format('YYYY-MM-DD');
@@ -967,7 +974,12 @@
             document.getElementById('nextDayBtn').addEventListener('click', () => {
                 const startDate = new Date(startDatePicker.value);
                 const endDate = new Date(endDatePicker.value);
-                startDate.setUTCDate(startDate.getUTCDate() + 1);
+                if (startDate > endDate) {
+                    alert('Start date must be before end date.');
+					startDatePicker.value = moment.utc(endDate).format('YYYY-MM-DD');
+                    return;
+                }
+				startDate.setUTCDate(startDate.getUTCDate() + 1);
                 endDate.setUTCDate(endDate.getUTCDate() + 1);
                 startDatePicker.value = moment.utc(startDate).format('YYYY-MM-DD');
                 endDatePicker.value = moment.utc(endDate).format('YYYY-MM-DD');
@@ -979,11 +991,15 @@
                 const endDate = new Date(endDatePicker.value);
                 if (startDate > endDate) {
                     alert('Start date must be before end date.');
+					startDatePicker.value = moment.utc(endDate).format('YYYY-MM-DD');
                     return;
                 }
 				startDatePicker.value = moment.utc(startDate).format('YYYY-MM-DD');
                 endDatePicker.value = moment.utc(endDate).format('YYYY-MM-DD');
-                loadTimelineDataInDateRange(startDate, endDate);
+                document.getElementById('loading-overlay').style.display = "flex";
+				loadTimelineDataInDateRange(startDate, endDate);
+				document.getElementById('loading-overlay').style.display = "none";
+
             });
         }
 
